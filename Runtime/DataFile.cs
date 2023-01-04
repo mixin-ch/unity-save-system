@@ -8,10 +8,10 @@ namespace Mixin.Save
         /// <summary>
         /// Important information for debugging and support
         /// </summary>
-        public string GameVersion;
-        public bool TestBuild;
-        public int SaveCounter;
-        public DateTime LastSave;
+        public string GameVersion = "undefined";
+        public bool TestBuild = false;
+        public int SaveCounter = 0;
+        public DateTime LastSave = new DateTime();
 
         DateTime _lastBackup;
         const string _BACKUP_PREFIX = "_backup";
