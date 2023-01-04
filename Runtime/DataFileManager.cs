@@ -1,10 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Xml.Serialization;
 using UnityEngine;
 using System.Runtime.Serialization;
 using Mixin.Utils;
+using Newtonsoft.Json;
 
 namespace Mixin.Save
 {
@@ -21,11 +21,10 @@ namespace Mixin.Save
         private DataFileT _data;
 
         /// <summary>
-        /// The File Name without extension.
+        /// The File Name with extension.
         /// </summary>
-        protected string _fileName = "default";
-        protected FileType _fileType = FileType.Binary;
-        protected string _fileVersion;
+        protected string _fileName = "default.json";
+        protected FileType _fileType = FileType.JSON;
         protected bool _useEncryption;
         protected string _salt;
 
@@ -58,11 +57,10 @@ namespace Mixin.Save
         /// <param name="fileType"></param>
         /// <param name="salt">Default is set to null. When entering a salt, 
         /// it will automatically encrypt your data.</param>
-        public DataFileManager(string fileName, FileType fileType, string fileVersion, string salt = null)
+        public DataFileManager(string fileName, FileType fileType, string salt = null)
         {
             _fileName = fileName;
             _fileType = fileType;
-            _fileVersion = fileVersion;
             _salt = salt;
 
             if (salt != null)
@@ -80,8 +78,8 @@ namespace Mixin.Save
 
             bool success = false;
 
-            // Create file if it does not exist, or open existing file.
-            FileStream fileStream = new FileStream(GetFileNameWithPathAndExtension(), FileMode.Create);
+            // Overwrite the existing file or create a new one.
+            FileStream fileStream = new FileStream(GetFullFilePath(), FileMode.Create);
 
             object dataToWrite = _data;
 
@@ -91,21 +89,22 @@ namespace Mixin.Save
             // Save data depending on FileType.
             switch (_fileType)
             {
-                case FileType.Binary:
-                    BinaryFormatter binaryFormatter = new BinaryFormatter();
-                    binaryFormatter.Serialize(fileStream, dataToWrite);
-                    break;
                 case FileType.XML:
                     XmlSerializer xmlSerializer = new XmlSerializer(typeof(DataFileT));
                     xmlSerializer.Serialize(fileStream, dataToWrite);
+                    fileStream.Close();
+                    break;
+                case FileType.JSON:
+                    fileStream.Close();
+                    string json = JsonConvert.SerializeObject(dataToWrite);
+                    File.WriteAllText(GetFullFilePath(), json);
                     break;
                 default:
                     throw new Exception($"FileType '{_fileType}' is not defined. Save process is canceled");
             }
 
-            fileStream.Close();
-
             success = true;
+            $"Saving {GetColorizedFileName()} was successful.".Log();
             OnAfterSave?.Invoke(success);
         }
 
@@ -116,81 +115,74 @@ namespace Mixin.Save
         /// </summary>
         public void Load()
         {
-            Load(null);
-        }
-
-        /// <summary>
-        /// Load data from file.
-        /// Calls onDataLoaded.
-        /// Invokes OnDataLoaded.
-        /// </summary>
-        public void Load(SerializationBinder serializationBinder)
-        {
-            $"Loading {GetFileNameWithPathAndExtension()}".LogProgress();
+            $"Loading {GetFullFilePath().Colorize(Color.cyan)}".LogProgress();
             OnBeforeLoad?.Invoke();
 
             bool success = false;
 
-            
-            if (!ThisFileExists()) // File does not exist.
+            // Check if file exists. Return if it does not exist.
+            if (!ThisFileExists())
             {
-                $"The file {GetFileNameWithPathAndExtension()} does not exist.".LogWarning();
-            }
-            else // File does exist.
-            {
-                // Open existing file.
-                FileStream fileStream = new FileStream(GetFileNameWithPathAndExtension(), FileMode.Open);
-                DataFileT loadedData = default;
-                string loadedEncryptedData = "";
-
-                try
-                {
-                    // Load data depending on FileType.
-                    switch (_fileType)
-                    {
-                        case FileType.Binary:
-                            BinaryFormatter binaryFormatter = new BinaryFormatter();
-                            if (serializationBinder != null)
-                                binaryFormatter.Binder = serializationBinder;
-                            if (_useEncryption)
-                                loadedEncryptedData = (string)binaryFormatter.Deserialize(fileStream);
-                            else
-                                loadedData = (DataFileT)binaryFormatter.Deserialize(fileStream);
-                            break;
-                        case FileType.XML:
-                            XmlSerializer xmlSerializer = new XmlSerializer(typeof(DataFileT));
-                            if (_useEncryption)
-                                loadedEncryptedData = (string)xmlSerializer.Deserialize(fileStream);
-                            else
-                                loadedData = (DataFileT)xmlSerializer.Deserialize(fileStream);
-                            break;
-                        default:
-                            throw new Exception($"FileType '{_fileType}' is not defined. Save process is canceled");
-                    }
-
-                    success = true;
-                }
-
-                catch (SerializationException)
-                {
-                    $"Could not Serialize FileData.".LogError();
-                    success = false;
-                }
-                catch (Exception)
-                {
-                    success = false;
-                }
-
-                if (_useEncryption && success)
-                    loadedData = JsonUtility.FromJson<DataFileT>(Encrypter.Decrypt(loadedEncryptedData, _salt));
-
-                fileStream.Close();
-
-                if (success)
-                    _data = loadedData;
+                $"The file {GetFullFilePath()} does not exist.".LogWarning();
+                return;
             }
 
-            $"File {GetFileNameWithExtension()} successfully loaded".Log(Color.yellow);
+            // Open existing file.
+            DataFileT loadedData = default;
+            string loadedEncryptedData = "";
+
+            try
+            {
+                // Load data depending on FileType.
+                switch (_fileType)
+                {
+                    case FileType.XML:
+                        // Open file
+                        FileStream fileStream = new FileStream(GetFullFilePath(), FileMode.Open);
+
+                        // Write file
+                        XmlSerializer xmlSerializer = new XmlSerializer(typeof(DataFileT));
+                        if (_useEncryption)
+                            loadedEncryptedData = (string)xmlSerializer.Deserialize(fileStream);
+                        else
+                            loadedData = (DataFileT)xmlSerializer.Deserialize(fileStream);
+
+                        // Close file
+                        fileStream.Close();
+                        break;
+                    case FileType.JSON:
+                        string jsonText = File.ReadAllText(GetFullFilePath());
+                        if (_useEncryption)
+                            loadedEncryptedData = JsonConvert.DeserializeObject<string>(jsonText);
+                        else
+                            loadedData = JsonConvert.DeserializeObject<DataFileT>(jsonText);
+                        break;
+                    default:
+                        throw new Exception($"FileType '{_fileType}' is not defined. Save process is canceled");
+                }
+
+                success = true;
+            }
+
+            catch (SerializationException e) // Catch Errors
+            {
+                $"Could not Serialize FileData. Error: {e}".LogError();
+                success = false;
+            }
+            catch (Exception e) // Catch Errors
+            {
+                $"Error Loading Data: {e}".LogError();
+                success = false;
+            }
+
+            // When using encryption then decrypt it here.
+            if (_useEncryption && success)
+                loadedData = JsonUtility.FromJson<DataFileT>(Encrypter.Decrypt(loadedEncryptedData, _salt));
+
+            if (success)
+                _data = loadedData;
+
+            $"File {GetColorizedFileName()} successfully loaded".Log(Color.yellow);
             OnAfterLoad?.Invoke(success);
         }
 
@@ -208,30 +200,35 @@ namespace Mixin.Save
             // File does exist.
             if (ThisFileExists())
             {
-                File.Delete(GetFileNameWithPathAndExtension());
+                File.Delete(GetFullFilePath());
                 success = true;
             }
             // File does not exist.
             else
-                $"The file {GetFileNameWithPathAndExtension()} does not exist.".LogWarning();
+                $"The file {GetFullFilePath()} does not exist.".LogWarning();
 
             _data = default;
+            $"File {_fileName} got deleted.".Log(Color.red);
             OnAfterDelete?.Invoke(success);
         }
 
-        protected string GetFileNameWithExtension()
+        /// <summary>
+        /// Returns the full file path including the filename and extension.
+        /// </summary>
+        /// <returns></returns>
+        protected string GetFullFilePath()
         {
-            return $"{_fileName}.{FileUtils.GetFileExtensionFromType(_fileType)}";
-        }
-
-        protected string GetFileNameWithPathAndExtension()
-        {
-            return $"{FileUtils.GetDataSavePath()}/{GetFileNameWithExtension()}";
+            return Path.Combine(FileUtils.GetDataSavePath(), _fileName);
         }
 
         protected bool ThisFileExists()
         {
-            return FileUtils.FileExists(GetFileNameWithPathAndExtension());
+            return File.Exists(GetFullFilePath());
+        }
+
+        private string GetColorizedFileName()
+        {
+            return _fileName.Colorize(Color.cyan);
         }
     }
 }
