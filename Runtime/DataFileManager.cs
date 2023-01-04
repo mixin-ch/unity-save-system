@@ -65,7 +65,7 @@ namespace Mixin.Save
             _fileVersion = fileVersion;
             _salt = salt;
 
-            if (salt != string.Empty)
+            if (salt != null)
                 _useEncryption = true;
         }
 
