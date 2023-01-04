@@ -1,7 +1,9 @@
 {
-    "name": "Mixin.[package-name].Editor",
+    "name": "Mixin.unity-save-system.Runtime",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:72360ac344346684e9e27a1a126f833a"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

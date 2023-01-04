@@ -1,8 +1,13 @@
 {
-    "name": "Mixin.[package-name].Editor.Tests",
+    "name": "Mixin.unity-save-system.Samples",
     "rootNamespace": "",
-    "references": [],
-    "includePlatforms": [],
+    "references": [
+        "GUID:72360ac344346684e9e27a1a126f833a",
+        "GUID:3a3f7d4ae54f8a3409043f877e729c7f"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
