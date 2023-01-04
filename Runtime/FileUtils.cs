@@ -7,14 +7,6 @@ namespace Mixin.Save
     public static class FileUtils
     {
         /// <summary>
-        /// Returns the file name without extension.
-        /// </summary>
-        /// <param name="path">The full path with filename and extension</param>
-        /// <returns></returns>
-        public static string GetFileNameWithoutExtension(string path)
-            => Path.GetFileNameWithoutExtension(path);
-
-        /// <summary>
         /// The Persistent Data Path.
         /// </summary>
         /// <returns>the base path where files will be saved.</returns>
@@ -37,22 +29,16 @@ namespace Mixin.Save
         public static string GetFileSizeInBytes(string path)
             => $"{GetFileSize(path).FormatThousand()} Bytes";
 
-        /// <summary>
-        /// Checks if a file of this path exists.
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
-        public static bool FileExists(string path)
-            => File.Exists(path);
-
         public static string GetFileExtensionFromType(FileType fileType)
         {
             switch (fileType)
             {
-                case FileType.Binary:
-                    return "bin";
+                //case FileType.Binary:
+                //    return "bin";
                 case FileType.XML:
                     return "xml";
+                case FileType.JSON:
+                    return "json";
                 default:
                     return null;
             }
