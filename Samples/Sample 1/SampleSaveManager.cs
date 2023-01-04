@@ -1,4 +1,5 @@
 using Mixin.Utils;
+using UnityEngine;
 
 namespace Mixin.Save.Samples
 {
@@ -16,23 +17,28 @@ namespace Mixin.Save.Samples
         protected override void Awake()
         {
             _ingameData = new DataFileManager<IngameData>(
-                "data",
-                FileType.Binary,
-                GameVersion,
+                "data.json",
+                FileType.JSON,
                 _salt);
 
             _userSettingsData = new DataFileManager<UserSettingsData>(
-                "settings",
-                FileType.XML,
-                GameVersion);
+                "settings.json",
+                FileType.JSON);
 
             _ingameData.Data = new IngameData();
             _userSettingsData.Data = new UserSettingsData();
 
-            _ingameData.Save();
-            _userSettingsData.Save();
-
             LoadAllData();
+        }
+
+        private void Update()
+        {
+            // Save the file with key S
+            if (Input.GetKeyDown(KeyCode.S))
+            {
+                _ingameData.Save();
+                _userSettingsData.Save();
+            }
         }
 
         private void LoadAllData()
